@@ -13,26 +13,40 @@ import {
 } from "react-native";
 import React, { useState, useEffect } from "react";
 import { useTheme } from "react-native-paper";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, Region, MapEvent } from "react-native-maps";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { height, width } = Dimensions.get("screen");
 
+interface LocationData {
+  title: string;
+  description: string;
+  notes: string;
+  sourceurl: string;
+  addimage: string[];
+  maplocation: {
+    address: string;
+    lat: number;
+    long: number;
+  };
+  category: string[];
+}
+
 const AddNewLocation = () => {
   const { colors } = useTheme(); // Access the theme's colors
 
-  const [title, settitle] = useState("");
-  const [description, setdescription] = useState("");
-  const [notes, setnotes] = useState("");
-  const [sourceurl, setsourceurl] = useState("");
-  const [entercategory, setentercategory] = useState("");
-  const [currentlocation, setcurrentlocation] = useState("");
-  const [activeindex, setactiveindex] = useState(0);
-  const [storecategory, setstorecategory] = useState([]);
-  const [base64image, setbase64image] = useState([]);
-  const [region, setRegion] = useState({
+  const [title, settitle] = useState<string>("");
+  const [description, setdescription] = useState<string>("");
+  const [notes, setnotes] = useState<string>("");
+  const [sourceurl, setsourceurl] = useState<string>("");
+  const [entercategory, setentercategory] = useState<string>("");
+  const [currentlocation, setcurrentlocation] = useState<string>("");
+  const [activeindex, setactiveindex] = useState<number>(0);
+  const [storecategory, setstorecategory] = useState<string[]>([]);
+  const [base64image, setbase64image] = useState<string[]>([]);
+  const [region, setRegion] = useState<Region>({
     latitude: 37.78825,
     longitude: -122.4324,
     latitudeDelta: 0.0922,
@@ -52,23 +66,23 @@ const AddNewLocation = () => {
 
   const getlocationdata = async () => {
     const getlocationdata = await AsyncStorage.getItem("locationData");
-    const formatdata = getlocationdata ? JSON.parse(getlocationdata) : null;
-
-    // console.log("fomatdata", formatdata);
+    const formatdata: LocationData | null = getlocationdata
+      ? JSON.parse(getlocationdata)
+      : null;
 
     if (formatdata !== null) {
-      settitle(formatdata?.title);
-      setdescription(formatdata?.description);
-      setnotes(formatdata?.notes);
-      setsourceurl(formatdata?.sourceurl);
-      setcurrentlocation(formatdata?.maplocation?.address);
-      setbase64image(formatdata?.addimage);
+      settitle(formatdata.title);
+      setdescription(formatdata.description);
+      setnotes(formatdata.notes);
+      setsourceurl(formatdata.sourceurl);
+      setcurrentlocation(formatdata.maplocation.address);
+      setbase64image(formatdata.addimage);
       setRegion((prevRegion) => ({
         ...prevRegion,
-        latitude: formatdata?.maplocation?.lat,
-        longitude: formatdata?.maplocation?.long,
+        latitude: formatdata.maplocation.lat,
+        longitude: formatdata.maplocation.long,
       }));
-      setstorecategory(formatdata?.category);
+      setstorecategory(formatdata.category);
     }
   };
 
@@ -79,7 +93,7 @@ const AddNewLocation = () => {
     }
   };
 
-  const handleremovecategory = (index) => {
+  const handleremovecategory = (index: number) => {
     const updatedCategories = storecategory.filter((_, i) => i !== index);
     setstorecategory(updatedCategories);
     if (activeindex === index) {
@@ -88,7 +102,6 @@ const AddNewLocation = () => {
   };
 
   const pickImage = async () => {
-    // Ask for permission to access media library
     if (Platform.OS !== "web") {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -98,24 +111,19 @@ const AddNewLocation = () => {
       }
     }
 
-    // Launch the image picker
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      // aspect: [4, 3],
       quality: 1,
-      base64: true, // Enable base64 encoding
+      base64: true,
     });
 
-    // console.log("image", result);
-
-    if (!result.canceled) {
-      setbase64image([...base64image, result.assets[0].base64]);
+    if (!result.canceled && result.assets) {
+      setbase64image([...base64image, result.assets[0].base64 || ""]);
     }
   };
 
-  const handleRemoveImage = (index) => {
-    // Remove image at the specified index
+  const handleRemoveImage = (index: number) => {
     const newBase64Image = base64image.filter((_, i) => i !== index);
     setbase64image(newBase64Image);
   };
@@ -126,44 +134,37 @@ const AddNewLocation = () => {
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
     });
-    console.log("location", location, "address", address);
+
     const { latitude, longitude } = location.coords;
 
-    // Update region for the map
     setRegion({
       ...region,
       latitude,
       longitude,
     });
 
-    // Update location in the text input
-    setcurrentlocation(address[0].formattedAddress);
+    setcurrentlocation(address[0].formattedAddress || "");
   };
 
-  const handleLongPress = async (event) => {
+  const handleLongPress = async (event: MapEvent) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
     let address = await Location.reverseGeocodeAsync({
       latitude: latitude,
       longitude: longitude,
     });
 
-    // Update region for the map
     setRegion((prevRegion) => ({
       ...prevRegion,
       latitude,
       longitude,
     }));
 
-    // Update marker position
-    // setMarkerPosition({ latitude, longitude });
-
-    // Update location in the text input
-    setcurrentlocation(address[0].formattedAddress);
+    setcurrentlocation(address[0].formattedAddress || "");
   };
 
   const handleSavelocation = async () => {
     try {
-      const obj = {
+      const obj: LocationData = {
         title,
         description,
         notes,
@@ -177,14 +178,11 @@ const AddNewLocation = () => {
         category: storecategory,
       };
 
-      // Convert the object to a JSON string
       const jsonValue = JSON.stringify(obj);
 
-      // Store the JSON string in AsyncStorage with a key
       await AsyncStorage.setItem("locationData", jsonValue);
 
-      Alert.alert("", "location saved successfully!");
-      console.log("Data saved successfully!");
+      Alert.alert("", "Location saved successfully!");
     } catch (error) {
       console.error("Error saving data:", error);
     }
