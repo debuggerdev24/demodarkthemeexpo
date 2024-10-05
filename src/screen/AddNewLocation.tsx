@@ -61,7 +61,7 @@ const AddNewLocation = () => {
         return;
       }
     })();
-    getlocationdata();
+    // getlocationdata();
   }, []);
 
   const getlocationdata = async () => {
@@ -163,6 +163,18 @@ const AddNewLocation = () => {
   };
 
   const handleSavelocation = async () => {
+    if (
+      title === "" ||
+      description === "" ||
+      notes === "" ||
+      sourceurl === "" ||
+      base64image.length === 0 ||
+      currentlocation === "" ||
+      storecategory.length === 0
+    ) {
+      Alert.alert("", "All fields are required");
+      return;
+    }
     try {
       const obj: LocationData = {
         title,
@@ -178,11 +190,36 @@ const AddNewLocation = () => {
         category: storecategory,
       };
 
-      const jsonValue = JSON.stringify(obj);
+      const getlocationdata = await AsyncStorage.getItem("locationData");
+      const formatdata: LocationData | null = getlocationdata
+        ? JSON.parse(getlocationdata)
+        : [];
 
-      await AsyncStorage.setItem("locationData", jsonValue);
+      const jsonvalue = [...formatdata, obj];
 
-      Alert.alert("", "Location saved successfully!");
+      await AsyncStorage.setItem("locationData", JSON.stringify(jsonvalue));
+
+      Alert.alert("", "Location saved successfully!", [
+        {
+          text: "OK",
+          onPress: () => {
+            // Clear all fields when OK is pressed
+            settitle("");
+            setdescription("");
+            setnotes("");
+            setsourceurl("");
+            setcurrentlocation("");
+            setbase64image([]);
+            setRegion({
+              latitude: 37.78825,
+              longitude: -122.4324,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            });
+            setstorecategory([]);
+          },
+        },
+      ]);
     } catch (error) {
       console.error("Error saving data:", error);
     }
@@ -423,7 +460,7 @@ const AddNewLocation = () => {
                     style={{ height: 20, width: 20 }}
                     tintColor={"#fff"}
                   />
-                  <Text style={{ color: "#fff" }}>Edit Location</Text>
+                  <Text style={{ color: "#fff" }}>Current Location</Text>
                 </TouchableOpacity>
               </View>
               <View
